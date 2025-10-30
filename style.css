@@ -1,0 +1,185 @@
+/* Reset Básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* PALETA DE CORES DA ACT (Extraídas da Logo) */
+:root {
+    --cor-principal-act: #582C89; /* Roxo Escuro ACT (Círculo Central) */
+    --cor-secundaria-destaque: #FF8542; /* Laranja ACT (Anel Externo) */
+    --cor-secundaria-act: #E72E7D; /* Rosa/Magenta (Alternativa para detalhes) */
+    --cor-fundo: #f4f7f6;
+    --cor-texto: #333;
+    --cor-contraste: white;
+}
+
+body {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+    line-height: 1.6;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* HEADER COM LOGOS */
+header {
+    background-color: var(--cor-principal-act); /* Fundo Roxo ACT */
+    color: var(--cor-contraste);
+    padding: 20px 0; /* Padding ajustado para o layout */
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    flex-wrap: wrap; 
+}
+
+.header-text {
+    flex-grow: 1;
+    padding: 0 15px;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 5px;
+}
+
+header p {
+    font-weight: 400;
+    font-style: italic;
+    opacity: 0.9;
+}
+
+.logo-container {
+    width: 100px; /* Largura definida para a logo */
+    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.header-logo {
+    max-width: 100%;
+    height: auto;
+    /* Caso a logo tenha fundo, pode ser necessário um filtro: filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5)); */
+}
+
+/* Seções */
+section {
+    padding: 40px 0;
+    margin-bottom: 20px;
+}
+
+section h2 {
+    color: var(--cor-principal-act); /* Título Roxo ACT */
+    border-bottom: 3px solid var(--cor-secundaria-destaque); /* Linha Laranja ACT */
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+}
+
+/* Programação */
+.tabela-programacao {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.dia-evento {
+    background-color: var(--cor-contraste);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid var(--cor-secundaria-act); /* Rosa para eventos gerais */
+}
+
+.dia-evento h3 {
+    color: var(--cor-principal-act);
+    margin-bottom: 15px;
+}
+
+.dia-evento ul {
+    list-style: none;
+    padding: 0;
+}
+
+.dia-evento li {
+    margin-bottom: 8px;
+    font-size: 1em;
+}
+
+/* Estilo para Atividades Competitivas */
+.destaque-comp {
+    border-left: 5px solid var(--cor-secundaria-destaque); /* Laranja para destaque */
+    background-color: #fff8f0; /* Fundo mais claro para destaque */
+}
+
+.botoes-comp {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px dashed #ccc;
+}
+
+.btn-regulamento, .btn-inscricao {
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 600;
+    font-size: 0.9em;
+    transition: background-color 0.3s;
+    flex-grow: 1;
+    text-align: center;
+}
+
+.btn-regulamento {
+    background-color: #6c757d; 
+    color: white;
+}
+
+.btn-regulamento:hover {
+    background-color: #5a6268;
+}
+
+.btn-inscricao {
+    background-color: var(--cor-secundaria-destaque); /* Fundo Laranja */
+    color: var(--cor-texto); 
+}
+
+.btn-inscricao:hover {
+    background-color: #e5723b; 
+}
+
+/* Footer */
+footer {
+    background-color: var(--cor-texto);
+    color: white;
+    text-align: center;
+    padding: 20px 0;
+    font-size: 0.9em;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+    }
+    .logo-container {
+        width: 80px;
+        margin: 10px auto;
+    }
+    .header-text {
+        order: 3; 
+    }
+}
