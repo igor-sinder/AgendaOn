@@ -6,7 +6,7 @@
     font-family: 'Poppins', sans-serif;
 }
 
-/* PALETA DE CORES DA ACT (Extraídas da Logo) */
+/* PALETA DE CORES DA ACT (Mantida) */
 :root {
     --cor-principal-act: #582C89; /* Roxo Escuro ACT (Círculo Central) */
     --cor-secundaria-destaque: #FF8542; /* Laranja ACT (Anel Externo) */
@@ -28,11 +28,12 @@ body {
     margin: 0 auto;
 }
 
-/* HEADER COM LOGOS */
+/* Header, Logos, Títulos (Mantidos) */
+
 header {
-    background-color: var(--cor-principal-act); /* Fundo Roxo ACT */
+    background-color: var(--cor-principal-act); 
     color: var(--cor-contraste);
-    padding: 20px 0; /* Padding ajustado para o layout */
+    padding: 20px 0;
 }
 
 .header-content {
@@ -60,7 +61,7 @@ header p {
 }
 
 .logo-container {
-    width: 100px; /* Largura definida para a logo */
+    width: 100px; 
     height: auto;
     display: flex;
     justify-content: center;
@@ -70,7 +71,6 @@ header p {
 .header-logo {
     max-width: 100%;
     height: auto;
-    /* Caso a logo tenha fundo, pode ser necessário um filtro: filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5)); */
 }
 
 /* Seções */
@@ -80,14 +80,31 @@ section {
 }
 
 section h2 {
-    color: var(--cor-principal-act); /* Título Roxo ACT */
-    border-bottom: 3px solid var(--cor-secundaria-destaque); /* Linha Laranja ACT */
+    color: var(--cor-principal-act); 
+    border-bottom: 3px solid var(--cor-secundaria-destaque); 
     padding-bottom: 10px;
     margin-bottom: 25px;
     font-size: 1.8em;
 }
 
-/* Programação */
+/* AJUSTES NO BRIEFING: ALINHAMENTO E ESPAÇAMENTO */
+#apresentacao p {
+    text-align: justify; /* Alinhamento Justificado */
+    margin-bottom: 15px; /* Espaçamento entre parágrafos */
+}
+
+#apresentacao h3 {
+    margin-top: 30px;
+    color: var(--cor-secundaria-destaque);
+}
+
+#apresentacao ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin-bottom: 20px;
+}
+
+/* Programação (Mantida, ajustando o destaque final) */
 .tabela-programacao {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -99,7 +116,7 @@ section h2 {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-left: 5px solid var(--cor-secundaria-act); /* Rosa para eventos gerais */
+    border-left: 5px solid var(--cor-secundaria-act);
 }
 
 .dia-evento h3 {
@@ -117,51 +134,15 @@ section h2 {
     font-size: 1em;
 }
 
-/* Estilo para Atividades Competitivas */
-.destaque-comp {
-    border-left: 5px solid var(--cor-secundaria-destaque); /* Laranja para destaque */
-    background-color: #fff8f0; /* Fundo mais claro para destaque */
+/* Estilo para Destaque Final */
+.destaque-final {
+    border-left: 5px solid var(--cor-secundaria-destaque); 
+    background-color: #fff8f0; 
+    font-weight: 600; /* Destaque o dia da culminância */
 }
 
-.botoes-comp {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-    flex-wrap: wrap;
-    padding-top: 10px;
-    border-top: 1px dashed #ccc;
-}
 
-.btn-regulamento, .btn-inscricao {
-    padding: 10px 15px;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: 600;
-    font-size: 0.9em;
-    transition: background-color 0.3s;
-    flex-grow: 1;
-    text-align: center;
-}
-
-.btn-regulamento {
-    background-color: #6c757d; 
-    color: white;
-}
-
-.btn-regulamento:hover {
-    background-color: #5a6268;
-}
-
-.btn-inscricao {
-    background-color: var(--cor-secundaria-destaque); /* Fundo Laranja */
-    color: var(--cor-texto); 
-}
-
-.btn-inscricao:hover {
-    background-color: #e5723b; 
-}
-
-/* Footer */
+/* Footer e Responsividade (Mantidos) */
 footer {
     background-color: var(--cor-texto);
     color: white;
@@ -170,7 +151,6 @@ footer {
     font-size: 0.9em;
 }
 
-/* Responsividade */
 @media (max-width: 768px) {
     .header-content {
         flex-direction: column;
