@@ -3,85 +3,273 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SNCT 2025 SESC Nova Friburgo | ACT</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Drone Access Arena: Voo Para Todos</title>
+    <!-- Carregamento do Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração de Fontes e Cores para um visual moderno e alegre -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#007bff', // Azul vibrante para destaque
+                        'secondary': '#28a745', // Verde para inclusão e sucesso
+                        'background': '#f4f7f9',
+                        'card': '#ffffff',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilização customizada para o botão flutuante de WhatsApp */
+        .whatsapp-float {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            bottom: 30px;
+            right: 30px;
+            background-color: #25d366; /* Cor oficial do WhatsApp */
+            color: #FFF;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 30px;
+            box-shadow: 2px 2px 3px #999;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease-in-out;
+        }
+        .whatsapp-float:hover {
+            transform: scale(1.1);
+        }
+        /* Estilo para ícone de drone (exemplo simples em ASCII/Emoji para demonstrar) */
+        .drone-icon {
+            display: inline-block;
+            transform: rotate(45deg);
+            animation: fly 2s infinite alternate;
+        }
+        @keyframes fly {
+            from { transform: translateY(0px) rotate(45deg); }
+            to { transform: translateY(-5px) rotate(45deg); }
+        }
+        /* Estilo para a seção de FAQ - Accordion */
+        .faq-item {
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .faq-question {
+            cursor: pointer;
+            padding: 1.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #333;
+        }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            padding-bottom: 0;
+        }
+        .faq-item.active .faq-answer {
+            max-height: 500px; /* Valor grande para animar */
+            padding-bottom: 1.5rem;
+        }
+    </style>
+    <!-- Ícone FontAwesome para o WhatsApp (simulando, pois o ambiente não permite link externo de CSS) -->
+    <!-- Usaremos um ícone inline ou emoji como fallback -->
 </head>
-<body>
+<body class="bg-background font-sans text-gray-800">
 
-    <header>
-        <div class="container header-content">
-            <div class="logo-container left-logo">
-                <img src="ACT.png" alt="Logo ACT SESC" class="header-logo">
-            </div>
-
-            <div class="header-text">
-                <h1>SNCT 2025 | SESC Nova Friburgo</h1>
-                <p>"Planeta Água: a cultura oceânica para enfrentar as mudanças climáticas no meu território."</p>
-            </div>
-            
-            <div class="logo-container right-logo">
-                <img src="ADMovere.png" alt="Logo AD Movere" class="header-logo">
-            </div>
+    <!-- Header / Hero Section -->
+    <header class="bg-primary text-white py-16 sm:py-24 shadow-lg">
+        <div class="container mx-auto px-6 text-center">
+            <h1 class="text-4xl sm:text-6xl font-extrabold mb-4 leading-tight">
+                Drone Access Arena: Voo Para Todos
+            </h1>
+            <p class="text-xl sm:text-2xl font-light mb-8">
+                O Futuro da Tecnologia e da Inclusão Chegou! 🚀
+            </p>
+            <p class="text-lg opacity-90">Mais que uma pista de drones, uma plataforma de empoderamento e diversão acessível. Prepare-se para decolar!</p>
         </div>
     </header>
 
-    <main class="container">
+    <!-- Seção de Conteúdo Explicativo Principal -->
+    <main class="container mx-auto px-6 py-12 sm:py-20">
         
-        <section id="apresentacao">
-            <h2>⚡ 48 Horas de Imersão: O Futuro da Ciência em Dois Dias!</h2>
-            
-            <p>De **11 a 12 de novembro de 2025**, a **Semana Nacional de Ciência e Tecnologia (SNCT) da ACT SESC Nova Friburgo** será realizada em uma edição intensiva e condensada, focada em entregar o máximo de conhecimento em apenas dois dias de imersão. Alinhados ao tema **"Planeta Água: a cultura oceânica para enfrentar as mudanças climáticas no meu território"**, transformaremos o SESC em um laboratório vibrante onde a curiosidade vira ação e o aprendizado se torna uma experiência inesquecível.</p>
-
-            <h3>O que você vai vivenciar na ACT:</h3>
-            
-            <p>Nossa programação foi cuidadosamente desenhada para ser prática e envolvente:</p>
-
-            <ul>
-                <li>**🎓 Palestras de Alto Nível:** Sessões diárias com especialistas, trazendo os debates mais urgentes sobre sustentabilidade e inovação, com foco no futuro dos recursos hídricos.</li>
-                <li>**🧪 Experiências no Laboratório:** Nossas Oficinas Científicas diárias oferecem a chance de você colocar a mão na massa, realizar experimentos e ver a teoria em funcionamento.</li>
-                <li>**🏆 Competição e Interação:** Participe do **Game Passa ou Repassa da Ciência** e do **Game da Ciência** para testar seus conhecimentos, competir por prêmios e interagir com outros entusiastas.</li>
-            </ul>
-
-            <p>Preparamos uma jornada de aprendizado concisa e impactante. Venha celebrar a ciência, a tecnologia e a arte em 48 horas intensas no SESC Nova Friburgo!</p>
+        <!-- Bloco 1: Boas-vindas e Conceito -->
+        <section class="mb-16">
+            <div class="bg-card rounded-xl p-8 sm:p-12 shadow-xl border-t-4 border-secondary">
+                <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-6">
+                    Olá, Piloto! Pronto para Alçar Voo? <span class="drone-icon">✈</span>
+                </h2>
+                <p class="text-lg mb-4 leading-relaxed">
+                    A Drone Access Arena é o seu novo ponto de encontro com a diversão, a tecnologia e a inclusão! Imagine um espaço vibrante onde o céu não é o limite, mas sim o ponto de partida para a aventura. Nós não somos apenas uma pista: somos a **primeira arena de drones totalmente dedicada à diversidade e acessibilidade no Brasil!**
+                </p>
+                <p class="text-xl font-semibold text-gray-600">
+                    Aqui, a pilotagem de drones é um direito, não um privilégio.
+                </p>
+            </div>
         </section>
 
-        <section id="programacao">
-            <h2>📅 Programação Completa (11 e 12 de Novembro)</h2>
-            <div class="tabela-programacao">
-                
-                <div class="dia-evento destaque-comp">
-                    <h3>Dia 11/Nov - Terça</h3>
-                    <ul>
-                        <li>**11h às 12h:** PALESTRA (Detalhes em breve)</li>
-                        <li>**13h às 17h:** GAME DA CIÊNCIA</li>
-                        <li>**13h às 17h:** PASSA OU REPASSA DA CIÊNCIA</li>
-                        <li>**13h às 17h:** OFICINAS LABORATÓRIO CIÊNCIAS</li>
-                        <li>**13h às 17h:** EXPOSIÇÕES ACT</li>
-                    </ul>
+        <!-- Bloco 2: Diferenciais de Inclusão -->
+        <section class="mb-16">
+            <h2 class="text-3xl sm:text-4xl font-bold text-center mb-10 text-primary">
+                O Que Nos Torna Únicos? A Inclusão em Cada Detalhe!
+            </h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Card 1: Acessibilidade -->
+                <div class="bg-card p-6 rounded-lg shadow-lg border-b-4 border-yellow-500 hover:shadow-2xl transition duration-300">
+                    <div class="text-4xl mb-4 text-yellow-500">♿</div>
+                    <h3 class="text-xl font-bold mb-3">Acessibilidade 100%</h3>
+                    <p class="text-gray-600">Pistas amplas e áreas de comando projetadas para o trânsito e conforto de cadeirantes e pessoas com mobilidade reduzida.</p>
                 </div>
                 
-                <div class="dia-evento destaque-final">
-                    <h3>Dia 12/Nov - Quarta: Culminância</h3>
-                    <ul>
-                        <li>**11h às 12h:** PALESTRA (Detalhes em breve)</li>
-                        <li>**13h às 15h:** ENCERRAMENTO DA SNCT (Culminância e Premiações)</li>
-                        <li>**13h às 17h:** GAME DA CIÊNCIA</li>
-			<li>**13h às 17h:** PASSA OU REPASSA DA CIÊNCIA</li>                        
-<li>**13h às 17h:** EXPOSIÇÕES ACT</li>
-                        <li>*Observação: O Passa ou Repassa deste dia pode ter suas finais ou a entrega de premiações.*</li>
-                    </ul>
+                <!-- Card 2: Design Sensorial -->
+                <div class="bg-card p-6 rounded-lg shadow-lg border-b-4 border-purple-500 hover:shadow-2xl transition duration-300">
+                    <div class="text-4xl mb-4 text-purple-500">🧘</div>
+                    <h3 class="text-xl font-bold mb-3">Design Sensorial</h3>
+                    <p class="text-gray-600">Zona de Descompressão especial, com iluminação suave e redução de ruídos, pensada para o espectro autista.</p>
                 </div>
 
+                <!-- Card 3: Comunicação Universal -->
+                <div class="bg-card p-6 rounded-lg shadow-lg border-b-4 border-green-500 hover:shadow-2xl transition duration-300">
+                    <div class="text-4xl mb-4 text-green-500">👂</div>
+                    <h3 class="text-xl font-bold mb-3">Comunicação Universal</h3>
+                    <p class="text-gray-600">Monitores com tradução em LIBRAS e comunicação visual clara para surdos, mudos e público com dificuldades de aprendizado.</p>
+                </div>
+
+                <!-- Card 4: Controle Adaptável -->
+                <div class="bg-card p-6 rounded-lg shadow-lg border-b-4 border-red-500 hover:shadow-2xl transition duration-300">
+                    <div class="text-4xl mb-4 text-red-500">🎮</div>
+                    <h3 class="text-xl font-bold mb-3">Controle para Todos</h3>
+                    <p class="text-gray-600">Tecnologias de assistência e joysticks adaptáveis que se ajustam à sua necessidade, tornando a pilotagem universal.</p>
+                </div>
             </div>
+        </section>
+
+        <!-- Bloco 3: Chamada para Ação e Propósito -->
+        <section class="text-center bg-primary text-white rounded-xl p-10 shadow-2xl">
+            <h2 class="text-3xl sm:text-4xl font-bold mb-4">Tecnologia, Esporte e Empoderamento!</h2>
+            <p class="text-xl mb-6">
+                Aqui, você aprende a pilotar em um ambiente seguro, se diverte com amigos e descobre o potencial da robótica e da engenharia. Venha viver a adrenalina dos e-Sports de drones e faça parte deste movimento pioneiro que está transformando o lazer no Brasil.
+            </p>
+            <a href="#faq" class="inline-block bg-secondary hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition duration-300 shadow-xl">
+                Tire suas Dúvidas e Decole!
+            </a>
         </section>
 
     </main>
 
-    <footer>
-        <p>&copy; 2025 SESC Nova Friburgo | Arte, Ciência e Tecnologia (ACT)</p>
+    <!-- Seção de Dúvidas Frequentes (FAQ) - Interativa -->
+    <section id="faq" class="py-12 sm:py-20 bg-gray-100">
+        <div class="container mx-auto px-6 max-w-4xl">
+            <h2 class="text-3xl sm:text-4xl font-bold text-center mb-10 text-primary">
+                Dúvidas Frequentes (FAQ)
+            </h2>
+
+            <div id="faq-list">
+                <!-- Item 1 -->
+                <div class="faq-item bg-card p-4 rounded-lg mb-4 shadow-md">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Qual é o principal diferencial da Drone Access Arena?
+                        <span class="text-xl transform transition duration-300">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p class="text-gray-600">Nosso principal diferencial é a **Acessibilidade Universal**. Somos a primeira arena do Brasil com design inclusivo (pistas, controles e comunicação) para garantir que pessoas com qualquer tipo de deficiência ou necessidade especial possam pilotar com autonomia e segurança.</p>
+                    </div>
+                </div>
+
+                <!-- Item 2 -->
+                <div class="faq-item bg-card p-4 rounded-lg mb-4 shadow-md">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Eu preciso ter experiência prévia para pilotar?
+                        <span class="text-xl transform transition duration-300">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p class="text-gray-600">Não! A Arena é para todos os níveis. Nossos monitores são treinados para guiar desde iniciantes até pilotos experientes. Começamos com voos simples em simuladores adaptados e progredimos para o circuito real.</p>
+                    </div>
+                </div>
+
+                <!-- Item 3 -->
+                <div class="faq-item bg-card p-4 rounded-lg mb-4 shadow-md">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Como a Arena atende ao público com Espectro Autista?
+                        <span class="text-xl transform transition duration-300">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p class="text-gray-600">Dispomos de uma **Zona de Descompressão** com ambiente controlado, iluminação suave e redução de estímulos visuais e sonoros excessivos, permitindo que o participante se sinta confortável e seguro para retornar à atividade quando desejar.</p>
+                    </div>
+                </div>
+
+                <!-- Item 4 -->
+                <div class="faq-item bg-card p-4 rounded-lg mb-4 shadow-md">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Quais são os tipos de drones utilizados?
+                        <span class="text-xl transform transition duration-300">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p class="text-gray-600">Utilizamos drones de pequeno porte, leves e seguros (indoor), ideais para aprendizado e competições de e-sports. Eles são fáceis de controlar e resistentes, garantindo diversão com o máximo de segurança para o público.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-sm">Desenvolvido por AD Movere - Movimentar para alcançar resultados. | Tecnologia &amp; Inclusão. &copy; 2025</p>
+        </div>
     </footer>
 
-    <script src="script.js"></script>
+    <!-- Botão Flutuante do WhatsApp -->
+    <!-- Número de telefone fornecido: (22)974027923 -->
+    <a href="https://wa.me/5522974027923?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20a%20Drone%20Access%20Arena%21" target="_blank" class="whatsapp-float" aria-label="Fale conosco pelo WhatsApp">
+        <!-- Ícone do WhatsApp: Usando um emoji como fallback para o FontAwesome -->
+        💬
+    </a>
+
+    <script>
+        /**
+         * Função JavaScript para controlar o comportamento do Accordion (FAQ).
+         */
+        function toggleFAQ(element) {
+            const item = element.closest('.faq-item');
+            const answer = item.querySelector('.faq-answer');
+            const icon = element.querySelector('span');
+            
+            // Fecha todos os outros itens FAQ
+            document.querySelectorAll('.faq-item').forEach(otherItem => {
+                if (otherItem !== item) {
+                    otherItem.classList.remove('active');
+                    otherItem.querySelector('.faq-answer').style.maxHeight = '0';
+                    otherItem.querySelector('.faq-question span').classList.remove('transform', 'rotate-45');
+                    otherItem.querySelector('.faq-question span').textContent = '+';
+                }
+            });
+
+            // Alterna o estado do item clicado
+            if (item.classList.contains('active')) {
+                // Fechar
+                item.classList.remove('active');
+                answer.style.maxHeight = '0';
+                icon.classList.remove('transform', 'rotate-45');
+                icon.textContent = '+';
+            } else {
+                // Abrir
+                item.classList.add('active');
+                // Define a altura máxima para animar
+                answer.style.maxHeight = answer.scrollHeight + "px"; 
+                icon.classList.add('transform', 'rotate-45');
+                icon.textContent = 'x'; // Mudar o ícone para indicar que está aberto
+            }
+        }
+    </script>
 </body>
 </html>
