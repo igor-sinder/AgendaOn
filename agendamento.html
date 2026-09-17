@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drone Access Arena — Painel de Voos</title>
+
+<!-- Tailwind via CDN (play-CDN, permitido para artifacts publicados) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Google Fonts: Space Grotesk (UI/headlines) + JetBrains Mono (dados/horários, como num painel de instrumentos) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* =========================================================
+     TOKENS DE DESIGN
+     Estética: painel de controle de torre de voo / radar noturno.
+     Fundo quase-preto, acentos "phosphor" (verde disponível,
+     azul selecionado, coral indisponível). Fonte mono para
+     horários e códigos de slot, reforçando a linguagem de
+     instrumentação de voo.
+     ========================================================= */
+  :root, :root[data-theme="dark"] {
+    --bg: #0A0E16;
+    --bg-grid: #0D121C;
+    --surface: #121826;
+    --surface-2: #182236;
+    --surface-3: #1E2A40;
+    --border: #232E42;
+    --border-soft: #1A2338;
+    --text: #E7ECF4;
+    --text-muted: #8593A8;
+    --text-faint: #566076;
+    --accent: #00E5A0;      /* disponível */
+    --accent-dim: #0A3B2C;
+    --accent-2: #3B9EFF;    /* selecionado */
+    --accent-2-dim: #0F2A4A;
+    --warn: #FF6B4A;        /* reservado/ocupado */
+    --warn-dim: #3A1810;
+    --gold: #FFB74D;        /* destaques de KPI */
+    --danger: #FF4D6D;
+  }
+  /* Aplicação é intencionalmente mono-tema (console noturno);
+     mantemos o mesmo conjunto de tokens sob prefers-color-scheme
+     para não quebrar em navegadores configurados para claro. */
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    color: var(--text);
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 42px 42px;
+    background-attachment: fixed;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  ::selection { background: var(--accent-2-dim); color: var(--text); }
+
+  /* Foco de teclado visível em todo o app */
+  a:focus-visible, button:focus-visible, input:focus-visible,
+  select:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent-2);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .panel-inset {
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+  }
+
+  .tab-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    padding: 9px 16px;
+    border-radius: 8px;
+    transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); border-color: var(--surface-3); background: var(--surface-2); }
+  .tab-btn[data-active="true"] {
+    color: #06110D;
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .field-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .field-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .field-input:focus { border-color: var(--accent-2); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #06110D;
+    font-weight: 600;
+    border-radius: 9px;
+    padding: 10px 18px;
+    transition: filter .15s ease, transform .1s ease;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; filter: none; }
+
+  .btn-secondary {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 9px;
+    padding: 10px 18px;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .btn-secondary:hover { background: var(--surface-3); border-color: var(--surface-3); }
+
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .btn-danger:hover { background: rgba(255,77,109,0.08); }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--surface-3); }
+
+  /* Slot de voo (célula do calendário) */
+  .slot {
+    aspect-ratio: 1 / 1;
+    min-height: 56px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    transition: transform .1s ease, border-color .15s ease, background-color .15s ease;
+    position: relative;
+  }
+  .slot:hover { transform: translateY(-1px); }
+  .slot[data-status="available"] {
+    background: var(--surface-2);
+    border-color: var(--accent-dim);
+  }
+  .slot[data-status="available"]:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .slot[data-status="selected"] {
+    background: var(--accent-2-dim);
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 1px var(--accent-2) inset;
+  }
+  .slot[data-status="mine"] {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+    cursor: default;
+  }
+  .slot[data-status="taken"] {
+    background: var(--warn-dim);
+    border-color: rgba(255,107,74,0.35);
+    color: var(--text-faint);
+    cursor: not-allowed;
+  }
+  .slot[data-status="locked"] {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .slot .slot-time { font-size: 11px; font-weight: 600; }
+  .slot .slot-drone { font-size: 9px; color: var(--text-muted); }
+
+  .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; }
+
+  /* Grade do Painel Principal (somente leitura, visão geral de ocupação) */
+  .painel-cell {
+    height: 28px;
+    border-radius: 6px;
+    margin: 2px;
+    border: 1px solid var(--border);
+    transition: transform .1s ease;
+  }
+  .painel-cell:hover { transform: scale(1.06); }
+  .painel-cell[data-status="available"] { background: var(--accent-dim); border-color: var(--accent); }
+  .painel-cell[data-status="taken"] { background: var(--warn-dim); border-color: rgba(255,107,74,0.5); }
+  .painel-row-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; }
+  .painel-col-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-align: center; padding-bottom: 6px; }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.data-table th {
+    text-align: left; font-weight: 500; color: var(--text-muted);
+    font-size: 11px; letter-spacing: 0.03em; padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.data-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-soft); }
+  table.data-table tr:last-child td { border-bottom: none; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface-3); border: 1px solid var(--border); color: var(--text);
+    padding: 12px 18px; border-radius: 10px; font-size: 13px; z-index: 100;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+    max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .toast.err { border-color: var(--danger); }
+  .toast.ok { border-color: var(--accent); }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body class="pb-16">
+
+<!-- =========================================================
+     PORTÃO DE ACESSO (proteção do lado do cliente)
+     -----------------------------------------------------------
+     Impede que quem digite o endereço desta página diretamente
+     (sem passar pelo botão "Sistema de Reservas" do site) veja o
+     conteúdo sem antes informar a senha. É uma barreira só de
+     JavaScript: útil contra acesso casual, mas não substitui uma
+     autenticação real de servidor para dados sensíveis.
+     ========================================================= -->
+<div id="auth-gate" class="fixed inset-0 z-[999] flex items-center justify-center px-4" style="background: var(--bg);">
+  <form id="auth-gate-form" class="panel p-8 w-full max-w-sm text-center space-y-4">
+    <div class="w-12 h-12 rounded-lg flex items-center justify-center mx-auto" style="background: var(--accent-dim); border:1px solid var(--accent);">
+      <span style="font-size:20px;">🛸</span>
+    </div>
+    <h2 class="text-lg font-semibold">Acesso restrito</h2>
+    <p class="text-sm" style="color: var(--text-muted);">Digite a senha para entrar no sistema de reservas.</p>
+    <input type="password" id="auth-gate-input" class="field-input text-center" placeholder="Senha de acesso" autocomplete="off" autofocus required>
+    <p id="auth-gate-error" class="text-xs hidden" style="color: var(--danger);">Senha incorreta. Tente novamente.</p>
+    <button type="submit" class="btn-primary w-full">Entrar</button>
+  </form>
+</div>
+
+<div id="app-shell" class="hidden">
+<!-- =========================================================
+     CABEÇALHO / NAVEGAÇÃO (estilo painel de torre de controle)
+     ========================================================= -->
+<header class="border-b" style="border-color: var(--border); background: rgba(10,14,22,0.85); backdrop-filter: blur(6px); position: sticky; top:0; z-index:40;">
+  <div class="max-w-6xl mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--accent-dim); border:1px solid var(--accent);">
+        <span style="font-size:16px;">🛸</span>
+      </div>
+      <div>
+        <h1 class="text-base md:text-lg font-semibold leading-none">Drone Access Arena</h1>
+        <p class="mono text-[11px] leading-none mt-1" style="color: var(--text-faint);">PAINEL DE CONTROLE DE VOOS</p>
+      </div>
+    </div>
+
+    <nav class="flex flex-wrap gap-2" role="tablist" aria-label="Seções do sistema">
+      <button class="tab-btn" data-tab="painel" role="tab">PAINEL</button>
+      <button class="tab-btn" data-tab="admin" role="tab">CONFIGURAÇÃO</button>
+      <button class="tab-btn" data-tab="cadastro" role="tab">CADASTRO</button>
+      <button class="tab-btn" data-tab="reservas" role="tab">RESERVAS</button>
+    </nav>
+  </div>
+
+  <!-- Faixa de status: usuário logado + evento/arena ativo -->
+  <div class="border-t" style="border-color: var(--border-soft);">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+      <div id="user-status-bar" class="mono flex items-center gap-2" style="color: var(--text-muted);">
+        <span class="status-dot" style="background: var(--text-faint);"></span>
+        <span>Nenhum usuário logado — acesse a aba CADASTRO</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-4">
+        <div id="event-switch-wrap" class="hidden">
+          <span class="mono text-[10px]" style="color: var(--text-faint); margin-right:6px;">EVENTO/ARENA</span>
+          <select id="event-switch" class="field-input" style="padding:4px 8px; font-size:11px; width:auto;"></select>
+        </div>
+        <div id="user-switch-wrap" class="hidden">
+          <span class="mono text-[10px]" style="color: var(--text-faint); margin-right:6px;">USUÁRIO</span>
+          <select id="user-switch" class="field-input" style="padding:4px 8px; font-size:11px; width:auto;"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 md:px-6 py-8">
+
+  <!-- =========================================================
+       ABA 0 — PAINEL PRINCIPAL (visão geral, somente leitura)
+       Objetivo: qualquer pessoa (logada ou não) consegue ver de
+       relance a disponibilidade de horários por drone, sem
+       precisar entrar na grade de reservas. Mostra sempre o
+       evento/arena selecionado na faixa do topo.
+       ========================================================= -->
+  <section id="tab-painel" class="tab-section space-y-6">
+    <div>
+      <h2 class="text-xl font-semibold">Painel principal</h2>
+      <p class="text-sm mt-1" style="color: var(--text-muted);">Visão geral da disponibilidade de horários do evento/arena selecionado no topo da página.</p>
+    </div>
+
+    <div id="painel-no-event" class="panel p-8 text-center hidden">
+      <p style="color: var(--text-muted);">Nenhum evento cadastrado ainda. Vá até <strong>CONFIGURAÇÃO</strong> para criar um evento e gerar sua grade de horários.</p>
+    </div>
+
+    <div id="painel-content" class="hidden space-y-6">
+      <div id="painel-event-info" class="panel p-5 grid grid-cols-2 md:grid-cols-5 gap-4 text-sm"></div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="panel p-4">
+          <p class="text-xs" style="color: var(--text-muted);">Slots gerados</p>
+          <p class="kpi-value" id="painel-kpi-total" style="color: var(--text);">0</p>
+        </div>
+        <div class="panel p-4">
+          <p class="text-xs" style="color: var(--text-muted);">Reservados</p>
+          <p class="kpi-value" id="painel-kpi-reserved" style="color: var(--accent-2);">0</p>
+        </div>
+        <div class="panel p-4">
+          <p class="text-xs" style="color: var(--text-muted);">Disponíveis</p>
+          <p class="kpi-value" id="painel-kpi-idle" style="color: var(--gold);">0</p>
+        </div>
+        <div class="panel p-4">
+          <p class="text-xs" style="color: var(--text-muted);">Ocupação</p>
+          <p class="kpi-value" id="painel-kpi-occupancy" style="color: var(--accent);">0%</p>
+        </div>
+      </div>
+
+      <div class="panel p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-sm font-semibold">Disponibilidade por horário e drone</h4>
+          <div class="flex gap-4 text-xs" style="color: var(--text-muted);">
+            <span class="flex items-center gap-2"><span class="status-dot" style="background: var(--accent);"></span> Disponível</span>
+            <span class="flex items-center gap-2"><span class="status-dot" style="background: var(--warn);"></span> Reservado</span>
+          </div>
+        </div>
+        <div id="painel-grid" class="overflow-x-auto"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       ABA 1 — CONFIGURAÇÃO DE EVENTOS (ADMIN)
+       Agora suporta MÚLTIPLOS eventos/arenas simultâneos ou em
+       dias diferentes: cada evento tem sua própria grade de
+       horários, reservas e painel de oferta/demanda.
+       ========================================================= -->
+  <section id="tab-admin" class="tab-section space-y-6 hidden">
+    <div>
+      <h2 class="text-xl font-semibold">Configuração de eventos</h2>
+      <p class="text-sm mt-1" style="color: var(--text-muted);">Cadastre quantos eventos/arenas precisar — datas diferentes ou arenas simultâneas — cada um com sua própria grade de horários.</p>
+    </div>
+
+    <!-- Lista de eventos cadastrados -->
+    <div class="panel p-5">
+      <div class="flex items-center justify-between mb-4 gap-3">
+        <h3 class="text-sm font-semibold" style="color: var(--text-muted);">EVENTOS / ARENAS CADASTRADOS</h3>
+        <button type="button" id="new-event-btn" class="btn-secondary">+ Novo evento</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table" id="events-table">
+          <thead>
+            <tr>
+              <th>Evento</th><th>Data</th><th>Local</th><th>Janela</th>
+              <th>Drones</th><th>Duração</th><th>Slots</th><th>Reservas</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="events-tbody"></tbody>
+        </table>
+        <p id="events-empty" class="text-sm py-6 text-center" style="color: var(--text-faint);">Nenhum evento cadastrado ainda. Use o formulário abaixo para criar o primeiro.</p>
+      </div>
+    </div>
+
+    <!-- Formulário de criação/edição de evento -->
+    <form id="event-form" class="panel p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <h3 id="event-form-title" class="md:col-span-3 text-sm font-semibold" style="color: var(--text-muted);">NOVO EVENTO</h3>
+
+      <div class="md:col-span-3">
+        <label class="field-label" for="ev-name">Nome do evento / arena</label>
+        <input class="field-input" type="text" id="ev-name" placeholder="Ex: Arena Central — Dia 1" required>
+      </div>
+
+      <div>
+        <label class="field-label" for="ev-date">Data do evento</label>
+        <input class="field-input" type="date" id="ev-date" required>
+      </div>
+      <div>
+        <label class="field-label" for="ev-location">Local</label>
+        <input class="field-input" type="text" id="ev-location" placeholder="Ex: Hangar 2" required>
+      </div>
+      <div></div>
+
+      <div>
+        <label class="field-label" for="ev-start">Horário de início</label>
+        <input class="field-input" type="time" id="ev-start" required>
+      </div>
+      <div>
+        <label class="field-label" for="ev-end">Horário de término</label>
+        <input class="field-input" type="time" id="ev-end" required>
+      </div>
+      <div>
+        <label class="field-label" for="ev-duration">Duração de cada voo (min)</label>
+        <input class="field-input" type="number" id="ev-duration" min="1" step="1" value="10" required>
+      </div>
+
+      <div>
+        <label class="field-label" for="ev-drones">Drones disponíveis simultaneamente</label>
+        <input class="field-input" type="number" id="ev-drones" min="1" step="1" value="2" required>
+      </div>
+      <div class="md:col-span-2 flex items-end gap-3 flex-wrap">
+        <button type="submit" id="event-form-submit" class="btn-primary">Criar evento e gerar grade</button>
+        <button type="button" id="event-form-cancel" class="btn-ghost hidden">Cancelar edição</button>
+        <span id="event-form-hint" class="text-xs" style="color: var(--text-faint);"></span>
+      </div>
+    </form>
+
+    <!-- Dashboard de oferta e demanda do evento selecionado no topo -->
+    <div>
+      <h3 class="text-sm font-semibold mb-3" style="color: var(--text-muted);">OFERTA × DEMANDA<span id="admin-dashboard-event-name"></span></h3>
+
+      <div id="admin-no-event" class="panel p-8 text-center hidden">
+        <p style="color: var(--text-muted);">Nenhum evento selecionado. Crie um evento acima ou selecione um na lista.</p>
+      </div>
+
+      <div id="admin-dashboard-content" class="hidden">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+          <div class="panel p-4">
+            <p class="text-xs" style="color: var(--text-muted);">Slots gerados</p>
+            <p class="kpi-value" id="kpi-total" style="color: var(--text);">0</p>
+          </div>
+          <div class="panel p-4">
+            <p class="text-xs" style="color: var(--text-muted);">Reservados</p>
+            <p class="kpi-value" id="kpi-reserved" style="color: var(--accent-2);">0</p>
+          </div>
+          <div class="panel p-4">
+            <p class="text-xs" style="color: var(--text-muted);">Capacidade ociosa</p>
+            <p class="kpi-value" id="kpi-idle" style="color: var(--gold);">0</p>
+          </div>
+          <div class="panel p-4">
+            <p class="text-xs" style="color: var(--text-muted);">Ocupação</p>
+            <p class="kpi-value" id="kpi-occupancy" style="color: var(--accent);">0%</p>
+          </div>
+        </div>
+
+        <div class="panel p-5">
+          <h4 class="text-sm font-semibold mb-3">Quem reservou cada horário</h4>
+          <div class="overflow-x-auto">
+            <table class="data-table" id="admin-bookings-table">
+              <thead>
+                <tr>
+                  <th>Horário</th>
+                  <th>Drone</th>
+                  <th>Reservado por</th>
+                  <th>Perfil</th>
+                  <th>E-mail</th>
+                </tr>
+              </thead>
+              <tbody id="admin-bookings-tbody"></tbody>
+            </table>
+            <p id="admin-bookings-empty" class="text-sm py-6 text-center" style="color: var(--text-faint);">Nenhuma reserva ainda.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       ABA 2 — CADASTRO DE USUÁRIOS
+       ========================================================= -->
+  <section id="tab-cadastro" class="tab-section space-y-6 hidden">
+    <div>
+      <h2 class="text-xl font-semibold">Cadastro no evento</h2>
+      <p class="text-sm mt-1" style="color: var(--text-muted);">Cadastre-se para reservar um horário de voo. Pessoa física reserva 1 horário por drone; instituição pode reservar vários.</p>
+    </div>
+
+    <form id="user-form" class="panel p-5 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+      <div class="md:col-span-2">
+        <label class="field-label" for="us-name">Nome / Razão Social</label>
+        <input class="field-input" type="text" id="us-name" placeholder="Como você quer ser identificado" required>
+      </div>
+      <div>
+        <label class="field-label" for="us-email">E-mail</label>
+        <input class="field-input" type="email" id="us-email" placeholder="voce@exemplo.com" required>
+      </div>
+      <div>
+        <label class="field-label" for="us-type">Tipo de perfil</label>
+        <select class="field-input" id="us-type">
+          <option value="pf">Pessoa Física</option>
+          <option value="inst">Instituição</option>
+        </select>
+      </div>
+      <div class="md:col-span-2">
+        <button type="submit" class="btn-primary">Cadastrar e entrar</button>
+      </div>
+    </form>
+
+    <div class="panel p-5 max-w-2xl">
+      <h4 class="text-sm font-semibold mb-3">Participantes cadastrados</h4>
+      <div class="overflow-x-auto">
+        <table class="data-table" id="users-table">
+          <thead><tr><th>Nome</th><th>Perfil</th><th>E-mail</th><th></th></tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+        <p id="users-empty" class="text-sm py-6 text-center" style="color: var(--text-faint);">Nenhum participante cadastrado ainda.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       ABA 3 — RESERVAS (CALENDÁRIO DE VOOS)
+       Sempre relativa ao evento/arena selecionado no topo.
+       ========================================================= -->
+  <section id="tab-reservas" class="tab-section space-y-6 hidden">
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      <div>
+        <h2 class="text-xl font-semibold" id="reservas-title">Calendário de voos</h2>
+        <p class="text-sm mt-1" style="color: var(--text-muted);">Selecione um horário disponível para o drone desejado no evento/arena escolhido no topo.</p>
+      </div>
+      <div id="reservas-rule-badge" class="mono text-xs panel-inset px-3 py-2 rounded-lg"></div>
+    </div>
+
+    <div id="reservas-no-event" class="panel p-8 text-center hidden">
+      <p style="color: var(--text-muted);">Nenhum evento selecionado. Vá até <strong>CONFIGURAÇÃO</strong> para criar ou escolher um evento.</p>
+    </div>
+
+    <div id="reservas-no-user" class="panel p-8 text-center hidden">
+      <p style="color: var(--text-muted);">Você precisa se identificar na aba <strong>CADASTRO</strong> antes de reservar um voo.</p>
+    </div>
+
+    <div id="reservas-content" class="hidden space-y-6">
+      <!-- Legenda -->
+      <div class="flex flex-wrap gap-4 text-xs" style="color: var(--text-muted);">
+        <span class="flex items-center gap-2"><span class="status-dot" style="background: var(--accent);"></span> Disponível</span>
+        <span class="flex items-center gap-2"><span class="status-dot" style="background: var(--accent-2);"></span> Selecionado agora</span>
+        <span class="flex items-center gap-2"><span class="status-dot" style="background: var(--accent-dim); border:1px solid var(--accent);"></span> Sua reserva</span>
+        <span class="flex items-center gap-2"><span class="status-dot" style="background: var(--warn);"></span> Reservado por terceiros</span>
+      </div>
+
+      <!-- Grade de slots, por drone -->
+      <div id="drone-columns" class="space-y-6"></div>
+
+      <div class="flex items-center justify-between panel p-4 sticky bottom-4">
+        <p class="text-sm" id="selection-summary" style="color: var(--text-muted);">Nenhum horário selecionado.</p>
+        <button id="confirm-booking-btn" class="btn-primary" disabled>Confirmar reserva</button>
+      </div>
+
+      <!-- Minhas reservas: permite editar (trocar horário) e excluir -->
+      <div class="panel p-5">
+        <h4 class="text-sm font-semibold mb-3">Minhas reservas neste evento</h4>
+        <div class="overflow-x-auto">
+          <table class="data-table" id="my-bookings-table">
+            <thead><tr><th>Horário</th><th>Drone</th><th></th></tr></thead>
+            <tbody id="my-bookings-tbody"></tbody>
+          </table>
+          <p id="my-bookings-empty" class="text-sm py-6 text-center" style="color: var(--text-faint);">Você ainda não reservou nenhum horário neste evento.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div><!-- /#app-shell -->
+
+<script>
+/* =============================================================
+   CAMADA DE DADOS (DB)
+   -----------------------------------------------------------
+   Toda leitura/escrita de dados passa por este objeto. Hoje ele
+   usa localStorage, mas a assinatura dos métodos (get/set/add/
+   update/remove por coleção) foi pensada para que, no futuro,
+   baste trocar a implementação interna por chamadas ao Firebase
+   (ex: Firestore) sem alterar o restante da aplicação — todo o
+   resto do código só conhece "DB.getEvents()", "DB.addBooking()"
+   etc, nunca "localStorage" diretamente.
+
+   Suporte a múltiplos eventos: cada evento tem um "id" próprio.
+   Slots e reservas carregam o campo "eventId" apontando para o
+   evento a que pertencem, permitindo múltiplas arenas simultâneas
+   ou o mesmo evento estendido por vários dias (cada dia = 1 evento).
+   ============================================================= */
+const DB = (() => {
+  const KEYS = {
+    events: 'daa_events',
+    users: 'daa_users',
+    currentUser: 'daa_currentUserId',
+    selectedEvent: 'daa_selectedEventId',
+    slots: 'daa_slots',
+    bookings: 'daa_bookings',
+  };
+
+  function _read(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.error('DB read error', key, e);
+      return fallback;
+    }
+  }
+  function _write(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.error('DB write error', key, e);
+      return false;
+    }
+  }
+
+  return {
+    // ---- Eventos (múltiplos) ----
+    getEvents() { return _read(KEYS.events, []); },
+    setEvents(events) { return _write(KEYS.events, events); },
+    addEvent(event) {
+      const events = this.getEvents();
+      events.push(event);
+      this.setEvents(events);
+      return event;
+    },
+    updateEvent(id, updates) {
+      const events = this.getEvents().map(e => e.id === id ? { ...e, ...updates } : e);
+      this.setEvents(events);
+    },
+    removeEvent(id) {
+      this.setEvents(this.getEvents().filter(e => e.id !== id));
+      this.setSlots(this.getSlots().filter(s => s.eventId !== id));
+      this.setBookings(this.getBookings().filter(b => b.eventId !== id));
+    },
+
+    // ---- Evento selecionado (qual arena/dia está em foco na UI) ----
+    getSelectedEventId() { return _read(KEYS.selectedEvent, null); },
+    setSelectedEventId(id) { return _write(KEYS.selectedEvent, id); },
+
+    // ---- Usuários ----
+    getUsers() { return _read(KEYS.users, []); },
+    setUsers(users) { return _write(KEYS.users, users); },
+    addUser(user) {
+      const users = this.getUsers();
+      users.push(user);
+      this.setUsers(users);
+      return user;
+    },
+
+    // ---- Usuário logado ----
+    getCurrentUserId() { return _read(KEYS.currentUser, null); },
+    setCurrentUserId(id) { return _write(KEYS.currentUser, id); },
+
+    // ---- Slots (grade de horários gerada, de TODOS os eventos) ----
+    getSlots() { return _read(KEYS.slots, []); },
+    setSlots(slots) { return _write(KEYS.slots, slots); },
+    getSlotsByEvent(eventId) { return this.getSlots().filter(s => s.eventId === eventId); },
+    setSlotsForEvent(eventId, newSlots) {
+      const others = this.getSlots().filter(s => s.eventId !== eventId);
+      this.setSlots([...others, ...newSlots]);
+    },
+
+    // ---- Reservas (de TODOS os eventos) ----
+    getBookings() { return _read(KEYS.bookings, []); },
+    setBookings(bookings) { return _write(KEYS.bookings, bookings); },
+    getBookingsByEvent(eventId) { return this.getBookings().filter(b => b.eventId === eventId); },
+    addBooking(booking) {
+      const bookings = this.getBookings();
+      bookings.push(booking);
+      this.setBookings(bookings);
+      return booking;
+    },
+    updateBooking(id, updates) {
+      const bookings = this.getBookings().map(b => b.id === id ? { ...b, ...updates } : b);
+      this.setBookings(bookings);
+    },
+    removeBooking(id) {
+      const bookings = this.getBookings().filter(b => b.id !== id);
+      this.setBookings(bookings);
+    },
+  };
+})();
+
+/* =============================================================
+   ESTADO EM MEMÓRIA (derivado do DB + seleção temporária da UI)
+   ============================================================= */
+const state = {
+  activeTab: 'admin',
+  selectedSlotIds: [],   // seleção temporária antes de confirmar
+  editingEventId: null,  // != null quando o formulário de evento está em modo edição
+};
+
+/* =============================================================
+   UTILITÁRIOS
+   ============================================================= */
+function uid(prefix) {
+  return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+}
+function timeToMinutes(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+function minutesToTime(mins) {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function showToast(message, kind) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { el.classList.remove('show'); }, 3200);
+}
+function currentUser() {
+  const id = DB.getCurrentUserId();
+  if (!id) return null;
+  return DB.getUsers().find(u => u.id === id) || null;
+}
+function currentEvent() {
+  const id = DB.getSelectedEventId();
+  if (!id) return null;
+  return DB.getEvents().find(e => e.id === id) || null;
+}
+
+/* =============================================================
+   GERAÇÃO DA GRADE DE HORÁRIOS (SLOTS) DE UM EVENTO
+   -----------------------------------------------------------
+   A partir da configuração de um evento (janela de tempo, duração
+   de cada voo e número de drones simultâneos), calculamos todos
+   os blocos de tempo possíveis, multiplicados pela quantidade
+   de drones — cada drone tem sua própria "trilha" de horários.
+   Cada slot carrega o eventId para poder conviver com os slots
+   de outros eventos/arenas no mesmo armazenamento.
+   ============================================================= */
+function generateSlots(event) {
+  const start = timeToMinutes(event.startTime);
+  const end = timeToMinutes(event.endTime);
+  const duration = Number(event.flightDuration);
+  const droneCount = Number(event.droneCount);
+  const slots = [];
+
+  if (!(duration > 0) || !(droneCount > 0) || end <= start) return slots;
+
+  let blockIndex = 0;
+  for (let t = start; t + duration <= end; t += duration) {
+    for (let d = 0; d < droneCount; d++) {
+      slots.push({
+        id: event.id + '_slot_' + blockIndex + '_' + d,
+        eventId: event.id,
+        droneIndex: d,
+        start: minutesToTime(t),
+        end: minutesToTime(t + duration),
+        startMin: t,
+      });
+    }
+    blockIndex++;
+  }
+  return slots;
+}
+
+/* =============================================================
+   TABS / NAVEGAÇÃO (SPA)
+   ============================================================= */
+function setActiveTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('.tab-section').forEach(sec => {
+    sec.classList.toggle('hidden', sec.id !== 'tab-' + tab);
+  });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.dataset.active = String(btn.dataset.tab === tab);
+  });
+  if (tab === 'painel') renderPainel();
+  if (tab === 'admin') renderAdmin();
+  if (tab === 'cadastro') renderCadastro();
+  if (tab === 'reservas') { state.selectedSlotIds = []; renderReservas(); }
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+});
+
+/* =============================================================
+   FAIXA DE USUÁRIO LOGADO E EVENTO ATIVO (topo)
+   ============================================================= */
+function renderUserBar() {
+  const bar = document.getElementById('user-status-bar');
+  const switchWrap = document.getElementById('user-switch-wrap');
+  const select = document.getElementById('user-switch');
+  const users = DB.getUsers();
+  const user = currentUser();
+
+  if (user) {
+    const tipoLabel = user.type === 'pf' ? 'Pessoa Física' : 'Instituição';
+    bar.innerHTML = `<span class="status-dot" style="background: var(--accent);"></span>
+      <span>Logado como <strong style="color: var(--text);">${escapeHtml(user.name)}</strong> · ${tipoLabel}</span>`;
+  } else {
+    bar.innerHTML = `<span class="status-dot" style="background: var(--text-faint);"></span>
+      <span>Nenhum usuário logado — acesse a aba CADASTRO</span>`;
+  }
+
+  if (users.length > 0) {
+    switchWrap.classList.remove('hidden');
+    select.innerHTML = '<option value="">Trocar usuário logado…</option>' +
+      users.map(u => `<option value="${u.id}" ${user && user.id === u.id ? 'selected' : ''}>${escapeHtml(u.name)} (${u.type === 'pf' ? 'PF' : 'Instituição'})</option>`).join('');
+  } else {
+    switchWrap.classList.add('hidden');
+  }
+}
+document.getElementById('user-switch').addEventListener('change', (e) => {
+  if (!e.target.value) return;
+  DB.setCurrentUserId(e.target.value);
+  state.selectedSlotIds = [];
+  renderUserBar();
+  if (state.activeTab === 'reservas') renderReservas();
+  showToast('Usuário ativo alterado.', 'ok');
+});
+
+function renderEventSwitchBar() {
+  const wrap = document.getElementById('event-switch-wrap');
+  const select = document.getElementById('event-switch');
+  const events = DB.getEvents().slice().sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+  const current = currentEvent();
+
+  if (events.length === 0) {
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
+  select.innerHTML = '<option value="">Trocar evento ativo…</option>' +
+    events.map(ev => `<option value="${ev.id}" ${current && current.id === ev.id ? 'selected' : ''}>${escapeHtml(ev.name)} · ${ev.date}</option>`).join('');
+}
+document.getElementById('event-switch').addEventListener('change', (e) => {
+  if (!e.target.value) return;
+  DB.setSelectedEventId(e.target.value);
+  state.selectedSlotIds = [];
+  if (state.activeTab === 'painel') renderPainel();
+  if (state.activeTab === 'admin') renderAdmin();
+  if (state.activeTab === 'reservas') renderReservas();
+  showToast('Evento/arena ativo alterado.', 'ok');
+});
+
+/* =============================================================
+   ABA PAINEL — VISÃO GERAL DE DISPONIBILIDADE (SOMENTE LEITURA)
+   -----------------------------------------------------------
+   Mostra, de forma rápida, quais horários estão livres ou
+   reservados em cada drone do evento/arena selecionado no topo —
+   sem exigir login e sem permitir interação (isso acontece na
+   aba RESERVAS).
+   ============================================================= */
+function renderPainel() {
+  const event = currentEvent();
+  const noEvent = document.getElementById('painel-no-event');
+  const content = document.getElementById('painel-content');
+
+  if (!event) {
+    noEvent.classList.remove('hidden');
+    content.classList.add('hidden');
+    return;
+  }
+  noEvent.classList.add('hidden');
+  content.classList.remove('hidden');
+
+  const slots = DB.getSlotsByEvent(event.id);
+  const bookings = DB.getBookingsByEvent(event.id);
+
+  document.getElementById('painel-event-info').innerHTML = `
+    <div><p class="text-xs" style="color: var(--text-muted);">Evento</p><p>${escapeHtml(event.name)}</p></div>
+    <div><p class="text-xs" style="color: var(--text-muted);">Data</p><p class="mono">${event.date || '—'}</p></div>
+    <div><p class="text-xs" style="color: var(--text-muted);">Local</p><p>${escapeHtml(event.location || '—')}</p></div>
+    <div><p class="text-xs" style="color: var(--text-muted);">Janela</p><p class="mono">${event.startTime}–${event.endTime}</p></div>
+    <div><p class="text-xs" style="color: var(--text-muted);">Drones / Duração</p><p class="mono">${event.droneCount} × ${event.flightDuration}min</p></div>
+  `;
+
+  const total = slots.length;
+  const reserved = bookings.length;
+  const idle = Math.max(total - reserved, 0);
+  const occupancy = total > 0 ? Math.round((reserved / total) * 100) : 0;
+  document.getElementById('painel-kpi-total').textContent = total;
+  document.getElementById('painel-kpi-reserved').textContent = reserved;
+  document.getElementById('painel-kpi-idle').textContent = idle;
+  document.getElementById('painel-kpi-occupancy').textContent = occupancy + '%';
+
+  const droneCount = Number(event.droneCount);
+  const times = [...new Set(slots.map(s => s.startMin))].sort((a, b) => a - b);
+
+  let html = `<div class="inline-grid min-w-full" style="grid-template-columns: 76px repeat(${droneCount}, minmax(60px, 1fr));">`;
+  html += `<div></div>`;
+  for (let d = 0; d < droneCount; d++) {
+    html += `<div class="painel-col-label">DRONE ${d + 1}</div>`;
+  }
+  times.forEach(t => {
+    html += `<div class="painel-row-label">${minutesToTime(t)}</div>`;
+    for (let d = 0; d < droneCount; d++) {
+      const slot = slots.find(s => s.startMin === t && s.droneIndex === d);
+      if (!slot) { html += `<div></div>`; continue; }
+      const booking = bookings.find(b => b.slotId === slot.id);
+      const status = booking ? 'taken' : 'available';
+      const title = `${slot.start}–${slot.end} · Drone ${d + 1} · ${booking ? 'Reservado por ' + booking.userName : 'Disponível'}`;
+      html += `<div class="painel-cell" data-status="${status}" title="${escapeHtml(title)}"></div>`;
+    }
+  });
+  html += `</div>`;
+  document.getElementById('painel-grid').innerHTML = html;
+}
+
+/* =============================================================
+   ABA ADMIN — LISTA DE EVENTOS + FORMULÁRIO + DASHBOARD
+   ============================================================= */
+function fillEventForm(event) {
+  document.getElementById('ev-name').value = event.name || '';
+  document.getElementById('ev-date').value = event.date || '';
+  document.getElementById('ev-location').value = event.location || '';
+  document.getElementById('ev-start').value = event.startTime || '';
+  document.getElementById('ev-end').value = event.endTime || '';
+  document.getElementById('ev-duration').value = event.flightDuration || 10;
+  document.getElementById('ev-drones').value = event.droneCount || 2;
+}
+
+function setFormMode(mode, event) {
+  const title = document.getElementById('event-form-title');
+  const submitBtn = document.getElementById('event-form-submit');
+  const cancelBtn = document.getElementById('event-form-cancel');
+
+  if (mode === 'edit' && event) {
+    state.editingEventId = event.id;
+    title.textContent = 'EDITANDO: ' + event.name.toUpperCase();
+    submitBtn.textContent = 'Salvar alterações';
+    cancelBtn.classList.remove('hidden');
+    fillEventForm(event);
+  } else {
+    state.editingEventId = null;
+    title.textContent = 'NOVO EVENTO';
+    submitBtn.textContent = 'Criar evento e gerar grade';
+    cancelBtn.classList.add('hidden');
+    document.getElementById('event-form').reset();
+    document.getElementById('ev-duration').value = 10;
+    document.getElementById('ev-drones').value = 2;
+  }
+  document.getElementById('event-form-hint').textContent = '';
+}
+
+document.getElementById('new-event-btn').addEventListener('click', () => {
+  setFormMode('create');
+  document.getElementById('ev-name').focus();
+});
+document.getElementById('event-form-cancel').addEventListener('click', () => setFormMode('create'));
+
+document.getElementById('event-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const data = {
+    name: document.getElementById('ev-name').value.trim(),
+    date: document.getElementById('ev-date').value,
+    location: document.getElementById('ev-location').value.trim(),
+    startTime: document.getElementById('ev-start').value,
+    endTime: document.getElementById('ev-end').value,
+    flightDuration: Number(document.getElementById('ev-duration').value),
+    droneCount: Number(document.getElementById('ev-drones').value),
+  };
+
+  if (timeToMinutes(data.endTime) <= timeToMinutes(data.startTime)) {
+    showToast('O horário de término precisa ser depois do início.', 'err');
+    return;
+  }
+
+  const isEdit = !!state.editingEventId;
+  const eventId = isEdit ? state.editingEventId : uid('event');
+  const event = { id: eventId, ...data };
+  const existingBookings = DB.getBookingsByEvent(eventId);
+
+  const proceed = () => {
+    if (isEdit) {
+      DB.updateEvent(eventId, data);
+    } else {
+      DB.addEvent(event);
+    }
+    const slots = generateSlots(event);
+    DB.setSlotsForEvent(eventId, slots);
+    DB.setBookings(DB.getBookings().filter(b => b.eventId !== eventId)); // grade nova invalida só as reservas DESTE evento
+    DB.setSelectedEventId(eventId);
+
+    document.getElementById('event-form-hint').textContent =
+      slots.length + ' slot(s) gerado(s) para ' + data.droneCount + ' drone(s).';
+    showToast(isEdit ? 'Evento atualizado.' : 'Evento criado e grade de horários gerada.', 'ok');
+    setFormMode('create');
+    renderEventSwitchBar();
+    renderAdmin();
+  };
+
+  if (existingBookings.length > 0) {
+    if (confirm('Este evento já tem ' + existingBookings.length + ' reserva(s). Alterar a configuração vai regenerar a grade e apagar essas reservas. Continuar?')) {
+      proceed();
+    }
+  } else {
+    proceed();
+  }
+});
+
+function renderEventsTable() {
+  const events = DB.getEvents().slice().sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+  const tbody = document.getElementById('events-tbody');
+  const empty = document.getElementById('events-empty');
+  const current = currentEvent();
+
+  if (events.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = events.map(ev => {
+    const slots = DB.getSlotsByEvent(ev.id);
+    const bookings = DB.getBookingsByEvent(ev.id);
+    const isActive = current && current.id === ev.id;
+    return `
+      <tr ${isActive ? 'style="background: var(--surface-2);"' : ''}>
+        <td>${escapeHtml(ev.name)}${isActive ? ' <span class="mono" style="color: var(--accent); font-size:10px;">· selecionado</span>' : ''}</td>
+        <td class="mono">${ev.date}</td>
+        <td>${escapeHtml(ev.location)}</td>
+        <td class="mono">${ev.startTime}–${ev.endTime}</td>
+        <td class="mono">${ev.droneCount}</td>
+        <td class="mono">${ev.flightDuration}min</td>
+        <td class="mono">${slots.length}</td>
+        <td class="mono">${bookings.length}</td>
+        <td class="text-right space-x-2 whitespace-nowrap">
+          ${isActive ? '' : `<button class="btn-ghost" data-select-event="${ev.id}">Selecionar</button>`}
+          <button class="btn-ghost" data-edit-event="${ev.id}">Editar</button>
+          <button class="btn-danger" data-delete-event="${ev.id}">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.querySelectorAll('[data-select-event]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      DB.setSelectedEventId(btn.dataset.selectEvent);
+      state.selectedSlotIds = [];
+      renderEventSwitchBar();
+      renderAdmin();
+      showToast('Evento/arena ativo alterado.', 'ok');
+    });
+  });
+  tbody.querySelectorAll('[data-edit-event]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ev = DB.getEvents().find(e => e.id === btn.dataset.editEvent);
+      if (!ev) return;
+      setFormMode('edit', ev);
+      document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  tbody.querySelectorAll('[data-delete-event]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ev = DB.getEvents().find(e => e.id === btn.dataset.deleteEvent);
+      if (!ev) return;
+      const bookingCount = DB.getBookingsByEvent(ev.id).length;
+      const msg = 'Excluir o evento "' + ev.name + '"' +
+        (bookingCount > 0 ? ' e suas ' + bookingCount + ' reserva(s)' : '') +
+        '? Essa ação não pode ser desfeita.';
+      if (!confirm(msg)) return;
+
+      DB.removeEvent(ev.id);
+      if (DB.getSelectedEventId() === ev.id) {
+        const remaining = DB.getEvents();
+        DB.setSelectedEventId(remaining.length ? remaining[0].id : null);
+      }
+      if (state.editingEventId === ev.id) setFormMode('create');
+
+      renderEventSwitchBar();
+      renderAdmin();
+      showToast('Evento excluído.', 'ok');
+    });
+  });
+}
+
+function renderAdmin() {
+  renderEventsTable();
+
+  const event = currentEvent();
+  const noEventEl = document.getElementById('admin-no-event');
+  const contentEl = document.getElementById('admin-dashboard-content');
+  const nameLabel = document.getElementById('admin-dashboard-event-name');
+
+  if (!event) {
+    noEventEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    nameLabel.textContent = '';
+    return;
+  }
+  noEventEl.classList.add('hidden');
+  contentEl.classList.remove('hidden');
+  nameLabel.textContent = ' · ' + event.name;
+
+  const slots = DB.getSlotsByEvent(event.id);
+  const bookings = DB.getBookingsByEvent(event.id);
+  const total = slots.length;
+  const reserved = bookings.length;
+  const idle = Math.max(total - reserved, 0);
+  const occupancy = total > 0 ? Math.round((reserved / total) * 100) : 0;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-reserved').textContent = reserved;
+  document.getElementById('kpi-idle').textContent = idle;
+  document.getElementById('kpi-occupancy').textContent = occupancy + '%';
+
+  const tbody = document.getElementById('admin-bookings-tbody');
+  const empty = document.getElementById('admin-bookings-empty');
+  const users = DB.getUsers();
+
+  const rows = bookings
+    .map(b => {
+      const slot = slots.find(s => s.id === b.slotId);
+      const user = users.find(u => u.id === b.userId);
+      return { b, slot, user };
+    })
+    .filter(r => r.slot)
+    .sort((a, b) => a.slot.startMin - b.slot.startMin || a.slot.droneIndex - b.slot.droneIndex);
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    tbody.innerHTML = rows.map(({ slot, user, b }) => `
+      <tr>
+        <td class="mono">${slot.start}–${slot.end}</td>
+        <td class="mono">Drone ${slot.droneIndex + 1}</td>
+        <td>${escapeHtml(b.userName)}</td>
+        <td>${user ? (user.type === 'pf' ? 'Pessoa Física' : 'Instituição') : '—'}</td>
+        <td style="color: var(--text-muted);">${user ? escapeHtml(user.email) : '—'}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+/* =============================================================
+   ABA CADASTRO — REGISTRO DE USUÁRIOS
+   (usuários são globais: o mesmo cadastro pode reservar em
+   qualquer um dos eventos/arenas disponíveis)
+   ============================================================= */
+document.getElementById('user-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('us-name').value.trim();
+  const email = document.getElementById('us-email').value.trim();
+  const type = document.getElementById('us-type').value;
+
+  if (!name || !email) return;
+
+  const users = DB.getUsers();
+  if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    showToast('Já existe um cadastro com este e-mail. Use a troca de usuário no topo.', 'err');
+    return;
+  }
+
+  const user = { id: uid('user'), name, email, type };
+  DB.addUser(user);
+  DB.setCurrentUserId(user.id); // login automático após cadastro
+
+  document.getElementById('user-form').reset();
+  renderCadastro();
+  renderUserBar();
+  showToast('Cadastro realizado. Você já está identificado no sistema.', 'ok');
+});
+
+function renderCadastro() {
+  const users = DB.getUsers();
+  const tbody = document.getElementById('users-tbody');
+  const empty = document.getElementById('users-empty');
+  const current = currentUser();
+
+  if (users.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td>${escapeHtml(u.name)}${current && current.id === u.id ? ' <span class="mono" style="color: var(--accent); font-size:10px;">· logado</span>' : ''}</td>
+      <td>${u.type === 'pf' ? 'Pessoa Física' : 'Instituição'}</td>
+      <td style="color: var(--text-muted);">${escapeHtml(u.email)}</td>
+      <td class="text-right">
+        ${current && current.id === u.id ? '' : `<button class="btn-ghost" data-login="${u.id}">Entrar como</button>`}
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('[data-login]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      DB.setCurrentUserId(btn.dataset.login);
+      state.selectedSlotIds = [];
+      renderCadastro();
+      renderUserBar();
+      showToast('Usuário ativo alterado.', 'ok');
+    });
+  });
+}
+
+/* =============================================================
+   ABA RESERVAS — CALENDÁRIO DE VOOS (do evento/arena ativo)
+   -----------------------------------------------------------
+   Regra de negócio crítica (por evento/arena):
+   - Pessoa Física: pode ter no máximo 1 horário POR DRONE. Ao
+     escolher um horário em um drone, um novo horário em OUTRO
+     drone só é permitido se houver pelo menos 1 duração inteira
+     de voo de intervalo de segurança antes e depois do horário
+     já ocupado — evitando perdas caso ela atrase.
+   - Instituição: pode selecionar e confirmar vários horários,
+     em qualquer drone, na mesma sessão, sem essas restrições.
+   ============================================================= */
+
+/* ---- Regra de Pessoa Física: 1 reserva por drone + buffer de segurança ----
+   `includePending` inclui também os slots que o usuário já selecionou
+   nesta sessão (mas ainda não confirmou), para checar conflitos entre
+   as próprias seleções pendentes. Sempre restrita ao MESMO evento. */
+function computeUserOccupiedSlots(user, slots, includePending, eventId) {
+  const bookings = DB.getBookings().filter(b => b.userId === user.id && b.eventId === eventId);
+  const occupied = bookings
+    .map(b => slots.find(s => s.id === b.slotId))
+    .filter(Boolean);
+  if (includePending) {
+    state.selectedSlotIds.forEach(id => {
+      const s = slots.find(x => x.id === id);
+      if (s && !occupied.some(o => o.id === s.id)) occupied.push(s);
+    });
+  }
+  return occupied;
+}
+
+function pfConflicts(slot, occupiedSlots, duration) {
+  return occupiedSlots.some(o => {
+    if (o.id === slot.id) return false;
+    if (o.droneIndex === slot.droneIndex) return true; // já tem horário nesse drone
+    const s1 = o.startMin, e1 = s1 + duration;
+    const s2 = slot.startMin, e2 = s2 + duration;
+    // Precisa de 1 duração inteira de folga antes OU depois; senão, conflita.
+    const hasSafeGap = (s2 >= e1 + duration) || (s1 >= e2 + duration);
+    return !hasSafeGap;
+  });
+}
+
+function renderReservas() {
+  const event = currentEvent();
+  const user = currentUser();
+
+  const noEvent = document.getElementById('reservas-no-event');
+  const noUser = document.getElementById('reservas-no-user');
+  const content = document.getElementById('reservas-content');
+
+  if (!event) {
+    noEvent.classList.remove('hidden');
+    noUser.classList.add('hidden');
+    content.classList.add('hidden');
+    return;
+  }
+  noEvent.classList.add('hidden');
+
+  document.getElementById('reservas-title').textContent = 'Calendário de voos — ' + event.name;
+
+  if (!user) {
+    noUser.classList.remove('hidden');
+    content.classList.add('hidden');
+    return;
+  }
+  noUser.classList.add('hidden');
+  content.classList.remove('hidden');
+
+  const slots = DB.getSlotsByEvent(event.id);
+  const bookings = DB.getBookingsByEvent(event.id);
+  const isPF = user.type === 'pf';
+  const duration = Number(event.flightDuration);
+  const droneCount = Number(event.droneCount);
+
+  const occupied = isPF ? computeUserOccupiedSlots(user, slots, true, event.id) : [];
+  const dronesUsed = isPF ? new Set(computeUserOccupiedSlots(user, slots, false, event.id).map(s => s.droneIndex)).size : 0;
+
+  const badge = document.getElementById('reservas-rule-badge');
+  badge.textContent = isPF
+    ? `PESSOA FÍSICA · 1 HORÁRIO POR DRONE (${dronesUsed}/${droneCount}) · BUFFER DE 1 HORÁRIO ENTRE DRONES`
+    : 'INSTITUIÇÃO · MÚLTIPLOS HORÁRIOS PERMITIDOS';
+
+  // Agrupa os slots por drone para desenhar "trilhas" paralelas
+  let columnsHtml = '';
+  for (let d = 0; d < droneCount; d++) {
+    const droneSlots = slots.filter(s => s.droneIndex === d).sort((a, b) => a.startMin - b.startMin);
+    columnsHtml += `
+      <div>
+        <h4 class="mono text-xs mb-3" style="color: var(--text-muted);">DRONE ${d + 1}</h4>
+        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+          ${droneSlots.map(slot => renderSlotCell(slot, bookings, user, isPF, occupied, duration)).join('')}
+        </div>
+      </div>
+    `;
+  }
+  document.getElementById('drone-columns').innerHTML = columnsHtml;
+
+  // Bind clique nos slots disponíveis/selecionados
+  document.querySelectorAll('.slot[data-clickable="true"]').forEach(el => {
+    el.addEventListener('click', () => toggleSlotSelection(el.dataset.slotId));
+  });
+
+  updateSelectionSummary();
+  renderMyBookings(user, event, slots);
+}
+
+function renderSlotCell(slot, bookings, user, isPF, occupied, duration) {
+  const booking = bookings.find(b => b.slotId === slot.id);
+  const isMine = booking && booking.userId === user.id;
+  const isTaken = booking && booking.userId !== user.id;
+  const isSelected = state.selectedSlotIds.includes(slot.id);
+
+  let status = 'available';
+  let clickable = true;
+  let lockedReason = '';
+
+  if (isMine) { status = 'mine'; clickable = false; }
+  else if (isTaken) { status = 'taken'; clickable = false; }
+  else if (isSelected) { status = 'selected'; clickable = true; }
+  else if (isPF && pfConflicts(slot, occupied, duration)) {
+    status = 'locked'; clickable = false;
+    lockedReason = ', bloqueado (mesmo drone já reservado ou dentro do intervalo de segurança)';
+  }
+
+  return `
+    <div class="slot" data-status="${status}" data-slot-id="${slot.id}" data-clickable="${clickable}"
+         role="button" tabindex="${clickable ? '0' : '-1'}"
+         aria-label="Drone ${slot.droneIndex + 1}, ${slot.start} às ${slot.end}, ${status === 'available' ? 'disponível' : status === 'mine' ? 'sua reserva' : status === 'taken' ? 'reservado' : status === 'selected' ? 'selecionado' : 'indisponível' + lockedReason}">
+      <span class="slot-time mono">${slot.start}</span>
+      <span class="slot-drone mono">${slot.end}</span>
+    </div>
+  `;
+}
+
+function toggleSlotSelection(slotId) {
+  const user = currentUser();
+  const event = currentEvent();
+  if (!user || !event) return;
+  const slots = DB.getSlotsByEvent(event.id);
+  const slot = slots.find(s => s.id === slotId);
+  if (!slot) return;
+
+  const idx = state.selectedSlotIds.indexOf(slotId);
+  if (idx >= 0) {
+    // Desmarcar sempre é permitido
+    state.selectedSlotIds.splice(idx, 1);
+    renderReservas();
+    return;
+  }
+
+  if (user.type === 'pf') {
+    const duration = Number(event.flightDuration);
+    const occupied = computeUserOccupiedSlots(user, slots, true, event.id);
+    if (pfConflicts(slot, occupied, duration)) {
+      showToast('Conflito: Pessoa Física só pode ter 1 horário por drone, com 1 horário inteiro de intervalo de segurança entre drones diferentes.', 'err');
+      return;
+    }
+  }
+
+  state.selectedSlotIds.push(slotId);
+  renderReservas();
+}
+
+function updateSelectionSummary() {
+  const summary = document.getElementById('selection-summary');
+  const confirmBtn = document.getElementById('confirm-booking-btn');
+  const n = state.selectedSlotIds.length;
+
+  if (n === 0) {
+    summary.textContent = 'Nenhum horário selecionado.';
+    confirmBtn.disabled = true;
+  } else {
+    summary.textContent = n + ' horário(s) selecionado(s).';
+    confirmBtn.disabled = false;
+  }
+}
+
+document.getElementById('confirm-booking-btn').addEventListener('click', () => {
+  const user = currentUser();
+  const event = currentEvent();
+  if (!user || !event || state.selectedSlotIds.length === 0) return;
+
+  const bookings = DB.getBookingsByEvent(event.id);
+  const alreadyTaken = state.selectedSlotIds.filter(id => bookings.some(b => b.slotId === id));
+  if (alreadyTaken.length > 0) {
+    showToast('Um dos horários selecionados acabou de ser reservado por outra pessoa. Atualizando a grade…', 'err');
+    state.selectedSlotIds = [];
+    renderReservas();
+    return;
+  }
+
+  state.selectedSlotIds.forEach(slotId => {
+    DB.addBooking({
+      id: uid('bk'),
+      eventId: event.id,
+      slotId,
+      userId: user.id,
+      userName: user.name,
+      createdAt: new Date().toISOString(),
+    });
+  });
+
+  showToast('Reserva confirmada com sucesso!', 'ok');
+  state.selectedSlotIds = [];
+  renderReservas();
+  if (state.activeTab === 'admin') renderAdmin();
+});
+
+/* ---- Minhas reservas (neste evento): editar (trocar horário) e excluir ---- */
+function renderMyBookings(user, event, slots) {
+  const mine = DB.getBookings().filter(b => b.userId === user.id && b.eventId === event.id);
+  const tbody = document.getElementById('my-bookings-tbody');
+  const empty = document.getElementById('my-bookings-empty');
+
+  if (mine.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = mine.map(b => {
+    const slot = slots.find(s => s.id === b.slotId);
+    if (!slot) return '';
+    return `
+      <tr>
+        <td class="mono">${slot.start}–${slot.end}</td>
+        <td class="mono">Drone ${slot.droneIndex + 1}</td>
+        <td class="text-right space-x-2">
+          <button class="btn-ghost" data-edit="${b.id}">Editar</button>
+          <button class="btn-danger" data-cancel="${b.id}">Cancelar</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.querySelectorAll('[data-cancel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (confirm('Cancelar esta reserva?')) {
+        DB.removeBooking(btn.dataset.cancel);
+        showToast('Reserva cancelada.', 'ok');
+        renderReservas();
+        renderAdmin();
+      }
+    });
+  });
+
+  // Editar = cancela a reserva atual e entra em modo de seleção
+  // para o usuário escolher um novo horário (mantém a regra de
+  // limite: PF fica livre para escolher outro horário no mesmo
+  // drone, respeitando o buffer com os demais drones).
+  tbody.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      DB.removeBooking(btn.dataset.edit);
+      state.selectedSlotIds = [];
+      showToast('Reserva removida — selecione o novo horário na grade.', 'ok');
+      renderReservas();
+    });
+  });
+}
+
+/* =============================================================
+   INICIALIZAÇÃO
+   ============================================================= */
+function init() {
+  const events = DB.getEvents();
+  let selectedId = DB.getSelectedEventId();
+  if (!selectedId || !events.some(e => e.id === selectedId)) {
+    selectedId = events.length ? events[0].id : null;
+    DB.setSelectedEventId(selectedId);
+  }
+
+  setFormMode('create');
+  renderUserBar();
+  renderEventSwitchBar();
+  setActiveTab(events.length ? 'painel' : 'admin');
+}
+
+/* =============================================================
+   PORTÃO DE ACESSO
+   -----------------------------------------------------------
+   Confere a senha antes de exibir a aplicação. O desbloqueio fica
+   guardado em sessionStorage (válido só nesta aba, até ela ser
+   fechada), para não pedir a senha de novo a cada navegação
+   interna. É uma proteção de cliente: não substitui autenticação
+   de servidor caso o conteúdo passe a ser sensível.
+   ============================================================= */
+const GATE_PASSWORD = '#@sescACT#$';
+const GATE_SESSION_KEY = 'daa_gate_unlocked';
+
+function unlockApp() {
+  document.getElementById('auth-gate').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('hidden');
+  init();
+}
+
+if (sessionStorage.getItem(GATE_SESSION_KEY) === '1') {
+  unlockApp();
+} else {
+  document.getElementById('auth-gate-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('auth-gate-input');
+    const errorMsg = document.getElementById('auth-gate-error');
+    if (input.value === GATE_PASSWORD) {
+      sessionStorage.setItem(GATE_SESSION_KEY, '1');
+      unlockApp();
+    } else {
+      errorMsg.classList.remove('hidden');
+      input.value = '';
+      input.focus();
+    }
+  });
+}
+
+</script>
+</body>
+</html>
