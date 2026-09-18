@@ -226,15 +226,32 @@
 
   /* Grade do Painel Principal (somente leitura, visão geral de ocupação) */
   .painel-cell {
-    height: 28px;
+    min-height: 34px;
     border-radius: 6px;
     margin: 2px;
     border: 1px solid var(--border);
     transition: transform .1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    overflow: hidden;
   }
   .painel-cell:hover { transform: scale(1.06); }
   .painel-cell[data-status="available"] { background: var(--accent-dim); border-color: var(--accent); }
   .painel-cell[data-status="taken"] { background: var(--warn-dim); border-color: rgba(255,107,74,0.5); }
+  .painel-cell-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    color: var(--text);
+  }
   .painel-row-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; }
   .painel-col-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-align: center; padding-bottom: 6px; }
 
@@ -958,7 +975,7 @@ function renderPainel() {
   const droneCount = Number(event.droneCount);
   const times = [...new Set(slots.map(s => s.startMin))].sort((a, b) => a - b);
 
-  let html = `<div class="inline-grid min-w-full" style="grid-template-columns: 76px repeat(${droneCount}, minmax(60px, 1fr));">`;
+  let html = `<div class="inline-grid min-w-full" style="grid-template-columns: 76px repeat(${droneCount}, minmax(78px, 1fr));">`;
   html += `<div></div>`;
   for (let d = 0; d < droneCount; d++) {
     html += `<div class="painel-col-label">DRONE ${d + 1}</div>`;
@@ -971,7 +988,8 @@ function renderPainel() {
       const booking = bookings.find(b => b.slotId === slot.id);
       const status = booking ? 'taken' : 'available';
       const title = `${slot.start}–${slot.end} · Drone ${d + 1} · ${booking ? 'Reservado por ' + booking.userName : 'Disponível'}`;
-      html += `<div class="painel-cell" data-status="${status}" title="${escapeHtml(title)}"></div>`;
+      const nameHtml = booking ? `<span class="painel-cell-name">${escapeHtml(booking.userName)}</span>` : '';
+      html += `<div class="painel-cell" data-status="${status}" title="${escapeHtml(title)}">${nameHtml}</div>`;
     }
   });
   html += `</div>`;
