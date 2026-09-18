@@ -8,6 +8,10 @@
 <!-- Tailwind via CDN (play-CDN, permitido para artifacts publicados) -->
 <script src="https://cdn.tailwindcss.com"></script>
 
+<!-- Firebase (App + Firestore) — banco de dados compartilhado entre todos os dispositivos -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
 <!-- Google Fonts: Space Grotesk (UI/headlines) + JetBrains Mono (dados/horários, como num painel de instrumentos) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -605,122 +609,149 @@
 
 </main>
 
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
 </div><!-- /#app-shell -->
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* =============================================================
+   CONFIGURAÇÃO DO FIREBASE
+   -----------------------------------------------------------
+   Substitua os valores abaixo pelos do SEU projeto Firebase:
+   Console do Firebase → Configurações do projeto → seção "Seus
+   apps" → app da Web → "SDK setup and configuration" → "Config".
+   Sem isso preenchido corretamente, o app não conecta ao banco.
+   ============================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCKqrXO1xlH-Ho-ZvVRonwZfT1U_0Yedvc",
+  authDomain: "agendamento-drone-arena.firebaseapp.com",
+  projectId: "agendamento-drone-arena",
+  storageBucket: "agendamento-drone-arena.firebasestorage.app",
+  messagingSenderId: "934047368273",
+  appId: "1:934047368273:web:41d5a84324df2daf79e470",
+  measurementId: "G-0J0YS27JH1",
+};
+firebase.initializeApp(firebaseConfig);
+const firestore = firebase.firestore();
+
+/* =============================================================
    CAMADA DE DADOS (DB)
    -----------------------------------------------------------
-   Toda leitura/escrita de dados passa por este objeto. Hoje ele
-   usa localStorage, mas a assinatura dos métodos (get/set/add/
-   update/remove por coleção) foi pensada para que, no futuro,
-   baste trocar a implementação interna por chamadas ao Firebase
-   (ex: Firestore) sem alterar o restante da aplicação — todo o
-   resto do código só conhece "DB.getEvents()", "DB.addBooking()"
-   etc, nunca "localStorage" diretamente.
+   Toda leitura/escrita de dados passa por este objeto — o resto
+   do app só conhece "DB.getEvents()", "DB.addBooking()" etc,
+   nunca "Firestore" ou "localStorage" diretamente.
+
+   Eventos, usuários, slots e reservas agora ficam no Firestore
+   (banco compartilhado entre TODOS os dispositivos e navegadores).
+   Cada coleção tem um "espelho" local em memória (_cache),
+   mantido sincronizado em tempo real por onSnapshot — inclusive
+   quando a mudança vem de outro celular/computador. Assim as
+   funções DB.get*() continuam síncronas e instantâneas (leem o
+   espelho), e DB.add/update/remove* gravam direto no Firestore.
+
+   Já "usuário logado" e "evento em foco na tela" continuam no
+   localStorage: são preferências DESTE navegador/aparelho, não
+   dados que fazem sentido compartilhar entre visitantes.
 
    Suporte a múltiplos eventos: cada evento tem um "id" próprio.
    Slots e reservas carregam o campo "eventId" apontando para o
    evento a que pertencem, permitindo múltiplas arenas simultâneas
    ou o mesmo evento estendido por vários dias (cada dia = 1 evento).
    ============================================================= */
-const DB = (() => {
-  const KEYS = {
-    events: 'daa_events',
-    users: 'daa_users',
-    currentUser: 'daa_currentUserId',
-    selectedEvent: 'daa_selectedEventId',
-    slots: 'daa_slots',
-    bookings: 'daa_bookings',
-  };
-
-  function _read(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      console.error('DB read error', key, e);
-      return fallback;
-    }
+function _localRead(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    console.error('DB read error', key, e);
+    return fallback;
   }
-  function _write(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      console.error('DB write error', key, e);
-      return false;
-    }
+}
+function _localWrite(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    console.error('DB write error', key, e);
+    return false;
   }
+}
 
-  return {
-    // ---- Eventos (múltiplos) ----
-    getEvents() { return _read(KEYS.events, []); },
-    setEvents(events) { return _write(KEYS.events, events); },
-    addEvent(event) {
-      const events = this.getEvents();
-      events.push(event);
-      this.setEvents(events);
-      return event;
-    },
-    updateEvent(id, updates) {
-      const events = this.getEvents().map(e => e.id === id ? { ...e, ...updates } : e);
-      this.setEvents(events);
-    },
-    removeEvent(id) {
-      this.setEvents(this.getEvents().filter(e => e.id !== id));
-      this.setSlots(this.getSlots().filter(s => s.eventId !== id));
-      this.setBookings(this.getBookings().filter(b => b.eventId !== id));
-    },
+const _cache = { events: [], users: [], slots: [], bookings: [] };
+const _ready = { events: false, users: false, slots: false, bookings: false };
+const _onChangeCallbacks = [];
 
-    // ---- Evento selecionado (qual arena/dia está em foco na UI) ----
-    getSelectedEventId() { return _read(KEYS.selectedEvent, null); },
-    setSelectedEventId(id) { return _write(KEYS.selectedEvent, id); },
+function _isFullyReady() {
+  return _ready.events && _ready.users && _ready.slots && _ready.bookings;
+}
+function _notifyChange() {
+  _onChangeCallbacks.forEach(cb => cb());
+}
+function _watchCollection(name) {
+  firestore.collection(name).onSnapshot(
+    snapshot => {
+      _cache[name] = snapshot.docs.map(doc => doc.data());
+      _ready[name] = true;
+      _notifyChange();
+    },
+    error => {
+      console.error('Firestore onSnapshot error (' + name + ')', error);
+      showToast('Erro ao sincronizar "' + name + '" com o banco de dados. Confira sua conexão e a configuração do Firebase.', 'err');
+    }
+  );
+}
 
-    // ---- Usuários ----
-    getUsers() { return _read(KEYS.users, []); },
-    setUsers(users) { return _write(KEYS.users, users); },
-    addUser(user) {
-      const users = this.getUsers();
-      users.push(user);
-      this.setUsers(users);
-      return user;
-    },
+const DB = {
+  // ---- Sincronização (uso interno da inicialização) ----
+  onChange(callback) { _onChangeCallbacks.push(callback); },
+  isReady() { return _isFullyReady(); },
+  startSync() { ['events', 'users', 'slots', 'bookings'].forEach(_watchCollection); },
 
-    // ---- Usuário logado ----
-    getCurrentUserId() { return _read(KEYS.currentUser, null); },
-    setCurrentUserId(id) { return _write(KEYS.currentUser, id); },
+  // ---- Evento em foco na tela (preferência local deste navegador) ----
+  getSelectedEventId() { return _localRead('daa_selectedEventId', null); },
+  setSelectedEventId(id) { return _localWrite('daa_selectedEventId', id); },
 
-    // ---- Slots (grade de horários gerada, de TODOS os eventos) ----
-    getSlots() { return _read(KEYS.slots, []); },
-    setSlots(slots) { return _write(KEYS.slots, slots); },
-    getSlotsByEvent(eventId) { return this.getSlots().filter(s => s.eventId === eventId); },
-    setSlotsForEvent(eventId, newSlots) {
-      const others = this.getSlots().filter(s => s.eventId !== eventId);
-      this.setSlots([...others, ...newSlots]);
-    },
+  // ---- Usuário logado (preferência local deste navegador) ----
+  getCurrentUserId() { return _localRead('daa_currentUserId', null); },
+  setCurrentUserId(id) { return _localWrite('daa_currentUserId', id); },
 
-    // ---- Reservas (de TODOS os eventos) ----
-    getBookings() { return _read(KEYS.bookings, []); },
-    setBookings(bookings) { return _write(KEYS.bookings, bookings); },
-    getBookingsByEvent(eventId) { return this.getBookings().filter(b => b.eventId === eventId); },
-    addBooking(booking) {
-      const bookings = this.getBookings();
-      bookings.push(booking);
-      this.setBookings(bookings);
-      return booking;
-    },
-    updateBooking(id, updates) {
-      const bookings = this.getBookings().map(b => b.id === id ? { ...b, ...updates } : b);
-      this.setBookings(bookings);
-    },
-    removeBooking(id) {
-      const bookings = this.getBookings().filter(b => b.id !== id);
-      this.setBookings(bookings);
-    },
-  };
-})();
+  // ---- Eventos (múltiplos, compartilhados via Firestore) ----
+  getEvents() { return _cache.events; },
+  addEvent(event) { firestore.collection('events').doc(event.id).set(event); return event; },
+  updateEvent(id, updates) { firestore.collection('events').doc(id).update(updates); },
+  removeEvent(id) {
+    firestore.collection('events').doc(id).delete();
+    _cache.slots.filter(s => s.eventId === id).forEach(s => firestore.collection('slots').doc(s.id).delete());
+    _cache.bookings.filter(b => b.eventId === id).forEach(b => firestore.collection('bookings').doc(b.id).delete());
+  },
+
+  // ---- Usuários (compartilhados via Firestore) ----
+  getUsers() { return _cache.users; },
+  addUser(user) { firestore.collection('users').doc(user.id).set(user); return user; },
+
+  // ---- Slots (grade de horários, compartilhados via Firestore) ----
+  getSlotsByEvent(eventId) { return _cache.slots.filter(s => s.eventId === eventId); },
+  setSlotsForEvent(eventId, newSlots) {
+    const batch = firestore.batch();
+    _cache.slots.filter(s => s.eventId === eventId).forEach(s => {
+      batch.delete(firestore.collection('slots').doc(s.id));
+    });
+    newSlots.forEach(s => {
+      batch.set(firestore.collection('slots').doc(s.id), s);
+    });
+    batch.commit();
+  },
+
+  // ---- Reservas (compartilhadas via Firestore) ----
+  getBookings() { return _cache.bookings; },
+  getBookingsByEvent(eventId) { return _cache.bookings.filter(b => b.eventId === eventId); },
+  addBooking(booking) { firestore.collection('bookings').doc(booking.id).set(booking); return booking; },
+  updateBooking(id, updates) { firestore.collection('bookings').doc(id).update(updates); },
+  removeBooking(id) { firestore.collection('bookings').doc(id).delete(); },
+  removeBookingsByEvent(eventId) {
+    _cache.bookings.filter(b => b.eventId === eventId).forEach(b => firestore.collection('bookings').doc(b.id).delete());
+  },
+};
 
 /* =============================================================
    ESTADO EM MEMÓRIA (derivado do DB + seleção temporária da UI)
@@ -1019,7 +1050,7 @@ document.getElementById('event-form').addEventListener('submit', (e) => {
     }
     const slots = generateSlots(event);
     DB.setSlotsForEvent(eventId, slots);
-    DB.setBookings(DB.getBookings().filter(b => b.eventId !== eventId)); // grade nova invalida só as reservas DESTE evento
+    DB.removeBookingsByEvent(eventId); // grade nova invalida só as reservas DESTE evento
     DB.setSelectedEventId(eventId);
 
     document.getElementById('event-form-hint').textContent =
@@ -1503,7 +1534,7 @@ function renderMyBookings(user, event, slots) {
 }
 
 /* =============================================================
-   INICIALIZAÇÃO
+   INICIALIZAÇÃO (primeira renderização, com os dados já carregados)
    ============================================================= */
 function init() {
   const events = DB.getEvents();
@@ -1519,6 +1550,18 @@ function init() {
   setActiveTab(events.length ? 'painel' : 'admin');
 }
 
+/* Reaplica a tela atual quando os dados mudam em tempo real — inclusive
+   quando a mudança vem de outro navegador/dispositivo conectado ao
+   mesmo evento. */
+function rerenderActiveTab() {
+  renderUserBar();
+  renderEventSwitchBar();
+  if (state.activeTab === 'painel') renderPainel();
+  if (state.activeTab === 'admin') renderAdmin();
+  if (state.activeTab === 'cadastro') renderCadastro();
+  if (state.activeTab === 'reservas') renderReservas();
+}
+
 /* =============================================================
    PORTÃO DE ACESSO
    -----------------------------------------------------------
@@ -1527,14 +1570,39 @@ function init() {
    fechada), para não pedir a senha de novo a cada navegação
    interna. É uma proteção de cliente: não substitui autenticação
    de servidor caso o conteúdo passe a ser sensível.
+
+   Depois da senha certa, a tela ainda mostra "Conectando…" até o
+   Firestore entregar o primeiro retorno de CADA coleção — só então
+   a aplicação aparece, já com dados reais (e não uma tela vazia
+   que se preenche de repente).
    ============================================================= */
 const GATE_PASSWORD = '#@sescACT#$';
 const GATE_SESSION_KEY = 'daa_gate_unlocked';
 
 function unlockApp() {
-  document.getElementById('auth-gate').classList.add('hidden');
-  document.getElementById('app-shell').classList.remove('hidden');
-  init();
+  sessionStorage.setItem(GATE_SESSION_KEY, '1');
+
+  // Troca a tela de senha por um estado de carregamento
+  document.getElementById('auth-gate-form').innerHTML = `
+    <div class="w-12 h-12 rounded-lg flex items-center justify-center mx-auto" style="background: var(--accent-dim); border:1px solid var(--accent);">
+      <span style="font-size:20px;">🛸</span>
+    </div>
+    <h2 class="text-lg font-semibold">Conectando…</h2>
+    <p class="text-sm" style="color: var(--text-muted);">Sincronizando com o banco de dados.</p>
+  `;
+
+  let started = false;
+  DB.onChange(() => {
+    if (!started && DB.isReady()) {
+      started = true;
+      document.getElementById('auth-gate').classList.add('hidden');
+      document.getElementById('app-shell').classList.remove('hidden');
+      init();
+    } else if (started) {
+      rerenderActiveTab();
+    }
+  });
+  DB.startSync();
 }
 
 if (sessionStorage.getItem(GATE_SESSION_KEY) === '1') {
@@ -1545,7 +1613,6 @@ if (sessionStorage.getItem(GATE_SESSION_KEY) === '1') {
     const input = document.getElementById('auth-gate-input');
     const errorMsg = document.getElementById('auth-gate-error');
     if (input.value === GATE_PASSWORD) {
-      sessionStorage.setItem(GATE_SESSION_KEY, '1');
       unlockApp();
     } else {
       errorMsg.classList.remove('hidden');
